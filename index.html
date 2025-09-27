@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CFISD DFS/SMB troubleshooting notes - Sep 26, 2025</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-900">
+  <div class="max-w-5xl mx-auto px-4 py-8">
+    <header class="mb-8">
+      <h1 class="text-3xl font-semibold">CFISD - DFS / SMB troubleshooting notes</h1>
+      <p class="text-sm text-slate-600 mt-1">Session date: Sep 26, 2025</p>
+    </header>
+
+    <section class="space-y-4">
+      <div class="bg-white shadow rounded-2xl p-5">
+        <h2 class="text-xl font-semibold mb-2">recap</h2>
+        <p class="mb-3">here’s a quick summary from tonight and where we landed.</p>
+        <ul class="list-disc pl-6 space-y-1">
+          <li>updated system.properties with ray's setting: <code>jcifs.smb.client.dfs.convertToFQDN=true</code>, then restarted folders.</li>
+          <li>re-processed a single test user (E085678). user policies were later turned off while we continued to test.</li>
+          <li>manual dfs connect from the appliance using <code>smbclient</code> failed on the domain dfs path:
+            <code>smbclient //cfisd.loc/DFS_Shares/Emp_Home -U CFISD\idauto</code> &rarr; <span class="font-mono">NT_STATUS_BAD_NETWORK_NAME</span>.</li>
+          <li>attempt to add <code>CFISD\idauto</code> to the <code>emp_home</code> share failed on their side. that points to a permission/policy or protocol constraint on that share.</li>
+          <li>not presenting as dns now. this looks more like a configuration mismatch between the nas/smb service and the appliance (auth/policy/share access) specific to <code>emp_home</code>.</li>
+          <li><code>stu_home</code> is accessible, but <code>emp_home</code> is not, using the same service account.</li>
+        </ul>
+      </div>
+
+      <div class="bg-white shadow rounded-2xl p-5">
+        <h2 class="text-xl font-semibold mb-2">current mitigation</h2>
+        <p>policies tied to the affected paths remain disabled while we debug. testing was limited to E085678.</p>
+      </div>
+
+      <div class="bg-white shadow rounded-2xl p-5">
+        <h2 class="text-xl font-semibold mb-2">next steps</h2>
+        <ul class="list-disc pl-6 space-y-1">
+          <li>meet monday evening, ideally with a microsoft rep, to debug dfs live.</li>
+          <li>ray will review the data and bring a short list of targeted troubleshooting steps.</li>
+          <li>use the working <code>stu_home</code> share as a control to compare behavior and isolate what is different on <code>emp_home</code>.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="mt-10 space-y-6">
+      <h2 class="text-2xl font-semibold">screenshots</h2>
+
+      <figure class="bg-white shadow rounded-2xl p-5">
+        <figcaption class="font-medium mb-3">rapididentity ui + terminal overlay</figcaption>
+        <img class="rounded-xl w-full" src="assets/error-terminal.png" alt="error terminal">
+        <p class="text-sm text-slate-600 mt-2">note: earlier we saw ping to the nas returning different ips. captured here.</p>
+      </figure>
+
+      <figure class="bg-white shadow rounded-2xl p-5">
+        <figcaption class="font-medium mb-3">centos repo lookup error (not directly related)</figcaption>
+        <img class="rounded-xl w-full" src="assets/centos-dnf-error.png" alt="centos dnf error">
+      </figure>
+
+      <figure class="bg-white shadow rounded-2xl p-5">
+        <figcaption class="font-medium mb-3">windows error when trying to add service account to emp_home</figcaption>
+        <img class="rounded-xl w-full" src="assets/dfs-error.png" alt="dfs error">
+      </figure>
+    </section>
+
+    <section class="mt-10 space-y-6">
+      <h2 class="text-2xl font-semibold">terminal transcripts (copy/paste)</h2>
+
+      <div class="bg-white shadow rounded-2xl p-5">
+        <h3 class="text-lg font-semibold mb-2">dns / name checks</h3>
+        <pre class="bg-black text-green-200 p-4 rounded-xl overflow-x-auto"><code>
+# confirm dfs namespace and dc records
+nslookup -type=SRV _ldap._tcp.dc._msdcs.cfisd.loc
+
+# sanity pings / getent
+ping cfisd.loc
+getent hosts cftech
+getent hosts cftech.cfisd.loc
+
+# earlier we saw ping to nas returning different ips (load balancer / anycast)
+# capture current results during monday session
+        </code></pre>
+      </div>
+
+      <div class="bg-white shadow rounded-2xl p-5">
+        <h3 class="text-lg font-semibold mb-2">smbclient tests</h3>
+        <pre class="bg-black text-green-200 p-4 rounded-xl overflow-x-auto"><code>
+# domain dfs root (fails with NT_STATUS_BAD_NETWORK_NAME right now)
+smbclient //cfisd.loc/DFS_Shares -U 'CFISD\idauto' -m SMB2 -c 'ls'
+
+# test each dc explicitly as namespace server (replace dcX)
+smbclient //dc1.cfisd.loc/DFS_Shares -U 'CFISD\idauto' -m SMB2 -c 'ls'
+smbclient //dc2.cfisd.loc/DFS_Shares -U 'CFISD\idauto' -m SMB2 -c 'ls'
+
+# test backends directly (replace host)
+smbclient //cftech.cfisd.loc/emp_home -U 'CFISD\idauto' -m SMB2 -c 'ls'
+smbclient //cftech.cfisd.loc/stu_home -U 'CFISD\idauto' -m SMB2 -c 'ls'
+
+# test specific user folder
+smbclient //cftech.cfisd.loc/emp_home -U 'CFISD\idauto' -m SMB2 -c 'ls E085678'
+        </code></pre>
+      </div>
+
+      <div class="bg-white shadow rounded-2xl p-5">
+        <h3 class="text-lg font-semibold mb-2">jCIFS logging (only if we need it)</h3>
+        <pre class="bg-black text-green-200 p-4 rounded-xl overflow-x-auto"><code>
+# enable higher logging, reproduce once on a single test user
+service rapididentity stop
+# clean rapididentity logs if needed
+rm -f /var/opt/idauto/logs/rapididentity.log
+service rapididentity start
+# process E085678 only, then collect logs and timestamps
+        </code></pre>
+      </div>
+    </section>
+
+    <section class="mt-10 space-y-6">
+      <h2 class="text-2xl font-semibold">notes / findings</h2>
+      <div class="bg-white shadow rounded-2xl p-5">
+        <pre class="bg-slate-100 text-slate-800 p-4 rounded-xl whitespace-pre-wrap">
+what I am seeing in the logs collected:
+- folders applied staff user policy and then checked \\cfisd.loc\DFS_Shares\emp_home\<user>
+- code path failed in SmbFile.exists() with "the network name cannot be found"
+- those errors look like a dfs namespace or referral problem
+- from the same server, smbclient //cfisd.loc/DFS_Shares -U CFISD\idauto succeeded earlier, so creds/connectivity ok
+
+extra:
+- if smbclient to the dfs root works, but emp_home fails while stu_home works, that points to share/ntfs/abe on emp_home
+- manual smbclient failing is important because it is independent of the application
+        </pre>
+      </div>
+    </section>
+
+    <footer class="mt-12 pb-12 text-sm text-slate-500">
+      <p>prepared for cfisd by identity automation support - sep 26, 2025</p>
+    </footer>
+  </div>
+</body>
+</html>
