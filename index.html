@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>CFISD DFS/SMB troubleshooting notes - Sep 26, 2025</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* simple line-number look without extra libs */
+    ol.loglines { counter-reset: item; }
+    ol.loglines li::marker { color:#94a3b8; }
+    code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+  </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
   <div class="max-w-5xl mx-auto px-4 py-8">
@@ -64,53 +70,110 @@
     </section>
 
     <section class="mt-10 space-y-6">
-      <h2 class="text-2xl font-semibold">terminal transcripts (copy/paste)</h2>
+      <h2 class="text-2xl font-semibold">terminal transcripts (full run)</h2>
 
       <div class="bg-white shadow rounded-2xl p-5">
-        <h3 class="text-lg font-semibold mb-2">dns / name checks</h3>
+        <h3 class="text-lg font-semibold mb-2">appliance commands and results</h3>
         <pre class="bg-black text-green-200 p-4 rounded-xl overflow-x-auto"><code>
-# confirm dfs namespace and dc records
-nslookup -type=SRV _ldap._tcp.dc._msdcs.cfisd.loc
+[root@IDAUTOHOME2 idauto]# smbclient //cfisd.loc/DFS_Shares/Emp_Home -U "CFISD\idauto"
+Enter CFISD\idauto's password:
+tree connect failed: NT_STATUS_BAD_NETWORK_NAME
 
-# sanity pings / getent
-ping cfisd.loc
-getent hosts cftech
-getent hosts cftech.cfisd.loc
+[root@IDAUTOHOME2 idauto]# smbclient //cfisd.loc/DFS_Shares/Emp_Home -U "CFISD\idauto" -e
+Enter CFISD\idauto's password:
+tree connect failed: NT_STATUS_BAD_NETWORK_NAME
 
-# earlier we saw ping to nas returning different ips (load balancer / anycast)
-# capture current results during monday session
+[root@IDAUTOHOME2 idauto]# smbclient //cfisd.loc/DFS_Shares/Emp_Home -m SMB2 -U "CFISD\idauto" -e
+Enter CFISD\idauto's password:
+Encryption required and server doesn't support SMB3 encryption - failing connect
+tree connect failed: NT_STATUS_BAD_NETWORK_NAME
+
+[root@IDAUTOHOME2 idauto]# smbclient //cfisd.loc/DFS_Shares/Emp_Home -m SMB3 -U "CFISD\idauto" -e
+Enter CFISD\idauto's password:
+tree connect failed: NT_STATUS_BAD_NETWORK_NAME
+
+[root@IDAUTOHOME2 idauto]# smbclient //cfisd.loc/DFS_Shares -m SMB2 -U "CFISD\idauto"
+Enter CFISD\idauto's password:
+session setup failed: NT_STATUS_CONNECTION_RESET
+
+[root@IDAUTOHOME2 idauto]# smbclient //cfisd.loc/DFS_Shares -m SMB2 -U "CFISD\idauto"
+Enter CFISD\idauto's password:
+Try "help" to get a list of possible commands.
+smb: \> ^C
+
+[root@IDAUTOHOME2 idauto]# smbclient -L //cfisd.loc/DFS_Shares -m SMB2 -U "CFISD\idauto"
+Enter CFISD\idauto's password:
+
+        Sharename       Type      Comment
+        ---------       ----      -------
+        ADMIN$          Disk      Remote Admin
+        C$              Disk      Default share
+        IPC$            IPC       Remote IPC
+        NETLOGON        Disk      Logon server share
+        SYSVOL          Disk      Logon server share
+Reconnecting with SMB1 for workgroup listing.
+do_connect: Connection to cfisd.loc failed (Error NT_STATUS_RESOURCE_NAME_NOT_FOUND)
+Unable to connect with SMB1 -- no workgroup available
+
+[root@IDAUTOHOME2 idauto]# smbclient //cftech.cfisd.loc/EMP_Home/ -m SMB3 -U "CFISD\idauto"
+Enter CFISD\idauto's password:
+tree connect failed: NT_STATUS_ACCESS_DENIED
+
+[root@IDAUTOHOME2 idauto]# smbclient //cftech.cfisd.loc/STU_HOME/ -m SMB3 -U "CFISD\idauto" -e
+Enter CFISD\idauto's password:
+Try "help" to get a list of possible commands.
+smb: \> ^C
         </code></pre>
+        <p class="text-sm text-slate-600 mt-3">read-out: dfs path to Emp_Home via cfisd.loc returns BAD_NETWORK_NAME. listing the dfs root works once (interactive shell) but also showed a connection reset earlier. direct host path to EMP_Home returns ACCESS_DENIED, while STU_HOME opens a shell.</p>
       </div>
+    </section>
+
+    <section class="mt-10 space-y-6">
+      <h2 class="text-2xl font-semibold">rapididentity (jcifs) debug log excerpts</h2>
 
       <div class="bg-white shadow rounded-2xl p-5">
-        <h3 class="text-lg font-semibold mb-2">smbclient tests</h3>
-        <pre class="bg-black text-green-200 p-4 rounded-xl overflow-x-auto"><code>
-# domain dfs root (fails with NT_STATUS_BAD_NETWORK_NAME right now)
-smbclient //cfisd.loc/DFS_Shares -U 'CFISD\idauto' -m SMB2 -c 'ls'
+        <p class="mb-4 text-sm text-slate-700">relevant lines from rapididentity debug around the failures. these are the tree connect errors during SmbFile.exists(). times approximate to 17:31–18:00.</p>
 
-# test each dc explicitly as namespace server (replace dcX)
-smbclient //dc1.cfisd.loc/DFS_Shares -U 'CFISD\idauto' -m SMB2 -c 'ls'
-smbclient //dc2.cfisd.loc/DFS_Shares -U 'CFISD\idauto' -m SMB2 -c 'ls'
+        <h3 class="text-lg font-semibold mb-2">snippet 1</h3>
+        <ol class="loglines bg-slate-900 text-slate-100 p-4 rounded-xl overflow-x-auto text-sm space-y-1">
+          <li>[TRACE] Send failed</li>
+          <li>jcifs.smb.SmbException: The network name cannot be found.</li>
+          <li>  at jcifs.smb.SmbTransportImpl.checkStatus2(...)</li>
+          <li>  at jcifs.smb.SmbTreeConnection.connect(...)</li>
+          <li>  at jcifs.smb.SmbFile.ensureTreeConnected(...)</li>
+          <li>  at jcifs.smb.SmbFile.exists(...)</li>
+          <li>  at net.idauto.fms.UserPolicyProcessor.applyUserPolicy(...)</li>
+          <li>[TRACE] Request: command=SMB2_TREE_CONNECT ...</li>
+          <li>[TRACE] Response: null</li>
+          <li>[DEBUG] Disconnect tree on treeConnectFailure</li>
+        </ol>
 
-# test backends directly (replace host)
-smbclient //cftech.cfisd.loc/emp_home -U 'CFISD\idauto' -m SMB2 -c 'ls'
-smbclient //cftech.cfisd.loc/stu_home -U 'CFISD\idauto' -m SMB2 -c 'ls'
+        <h3 class="text-lg font-semibold mt-6 mb-2">snippet 2</h3>
+        <ol class="loglines bg-slate-900 text-slate-100 p-4 rounded-xl overflow-x-auto text-sm space-y-1">
+          <li>[TRACE] Send failed</li>
+          <li>jcifs.smb.SmbException: The network name cannot be found.</li>
+          <li>  at jcifs.smb.SmbTransportImpl.checkStatus2(...)</li>
+          <li>  at jcifs.smb.SmbTreeConnection.connect(...)</li>
+          <li>  at jcifs.smb.SmbFile.ensureTreeConnected(...)</li>
+          <li>  at jcifs.smb.SmbFile.exists(...)</li>
+          <li>[TRACE] Request: command=SMB2_TREE_CONNECT ...</li>
+          <li>[TRACE] Response: null</li>
+        </ol>
 
-# test specific user folder
-smbclient //cftech.cfisd.loc/emp_home -U 'CFISD\idauto' -m SMB2 -c 'ls E085678'
-        </code></pre>
-      </div>
+        <h3 class="text-lg font-semibold mt-6 mb-2">snippet 3</h3>
+        <ol class="loglines bg-slate-900 text-slate-100 p-4 rounded-xl overflow-x-auto text-sm space-y-1">
+          <li>[TRACE] Send failed</li>
+          <li>jcifs.smb.SmbException: The network name cannot be found.</li>
+          <li>  at jcifs.smb.SmbTransportImpl.checkStatus2(...)</li>
+          <li>  at jcifs.smb.SmbTreeConnection.connect(...)</li>
+          <li>  at jcifs.smb.SmbFile.ensureTreeConnected(...)</li>
+          <li>  at jcifs.smb.SmbFile.exists(...)</li>
+          <li>[DEBUG] treeConnect failed; disconnecting</li>
+        </ol>
 
-      <div class="bg-white shadow rounded-2xl p-5">
-        <h3 class="text-lg font-semibold mb-2">jCIFS logging (only if we need it)</h3>
-        <pre class="bg-black text-green-200 p-4 rounded-xl overflow-x-auto"><code>
-# enable higher logging, reproduce once on a single test user
-service rapididentity stop
-# clean rapididentity logs if needed
-rm -f /var/opt/idauto/logs/rapididentity.log
-service rapididentity start
-# process E085678 only, then collect logs and timestamps
-        </code></pre>
+        <div class="mt-6 text-sm text-slate-700">
+          <p>log level note: jcifs.smb logger is already at TRACE, so we are capturing low-level smb2 messages and tree connect attempts.</p>
+        </div>
       </div>
     </section>
 
@@ -122,10 +185,10 @@ what I am seeing in the logs collected:
 - folders applied staff user policy and then checked \\cfisd.loc\DFS_Shares\emp_home\<user>
 - code path failed in SmbFile.exists() with "the network name cannot be found"
 - those errors look like a dfs namespace or referral problem
-- from the same server, smbclient //cfisd.loc/DFS_Shares -U CFISD\idauto succeeded earlier, so creds/connectivity ok
+- from the same server, smbclient //cfisd.loc/DFS_Shares -U CFISD\idauto previously worked, so creds/connectivity are generally ok
 
 extra:
-- if smbclient to the dfs root works, but emp_home fails while stu_home works, that points to share/ntfs/abe on emp_home
+- if smbclient to the dfs root works but emp_home fails while stu_home works, that points to share/ntfs/abe on emp_home
 - manual smbclient failing is important because it is independent of the application
         </pre>
       </div>
