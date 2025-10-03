@@ -13,12 +13,8 @@
   <div class="max-w-5xl mx-auto px-4 py-8">
     <header class="mb-8">
       <h1 class="text-3xl font-semibold">CFISD – DFS / SMB troubleshooting notes</h1>
-      <p class="text-sm text-slate-600 mt-1">Session date: Sep 26, 2025</p>
-      <p class="text-sm text-slate-600">Tonight plan: Oct 3, 2025 • Live collaborative checklist (Firestore)</p>
-      <p class="text-xs text-slate-500 mt-1">Tip: add <code>?list=cyfair</code> or another id to the URL to create/use a different checklist.</p>
     </header>
 
-    <!-- CHECKLIST -->
     <section class="space-y-4">
       <div class="bg-white shadow rounded-2xl p-5">
         <div class="flex items-center justify-between gap-3 flex-wrap">
@@ -31,7 +27,6 @@
           </div>
         </div>
 
-        <!-- Controls -->
         <div class="grid sm:grid-cols-4 gap-3 mt-3">
           <label class="text-sm">Student test ID
             <input id="inp-stu" type="text" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-1.5" placeholder="S249612" />
@@ -48,17 +43,14 @@
           </label>
         </div>
 
-        <!-- Checklist items -->
         <ul id="checklist" class="mt-4 space-y-2"></ul>
 
-        <!-- Add custom item -->
         <div class="mt-4 flex gap-2">
           <input id="inp-new" type="text" class="flex-1 rounded-lg border border-slate-300 px-3 py-1.5" placeholder="Add custom checklist item" />
           <button id="btn-add" class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-sm hover:bg-emerald-700">Add</button>
         </div>
       </div>
 
-      <!-- QUICK COMMANDS -->
       <div class="bg-white shadow rounded-2xl p-5">
         <div class="flex items-center justify-between">
           <h2 class="text-xl font-semibold">Quick commands</h2>
@@ -90,7 +82,6 @@
       </div>
     </section>
 
-    <!-- RECAP -->
     <section class="mt-10 space-y-4">
       <div class="bg-white shadow rounded-2xl p-5">
         <h2 class="text-xl font-semibold mb-2">recap</h2>
@@ -103,9 +94,7 @@
       </div>
     </section>
 
-    <!-- ===== EVERYTHING BELOW THIS POINT IS YOUR ORIGINAL NOTES ===== -->
 
-    <!-- ORIGINAL: current mitigation -->
     <section class="mt-10 space-y-4">
       <div class="bg-white shadow rounded-2xl p-5">
         <h2 class="text-xl font-semibold mb-2">current mitigation</h2>
@@ -122,7 +111,6 @@
       </div>
     </section>
 
-    <!-- ORIGINAL: screenshots -->
     <section class="mt-10 space-y-6">
       <h2 class="text-2xl font-semibold">screenshots</h2>
 
@@ -143,7 +131,6 @@
       </figure>
     </section>
 
-    <!-- ORIGINAL: terminal transcripts -->
     <section class="mt-10 space-y-4">
       <div class="flex items-center justify-between">
         <h2 class="text-2xl font-semibold">terminal transcripts (full)</h2>
@@ -205,7 +192,6 @@ smb: \> ^C
       </div>
     </section>
 
-    <!-- ORIGINAL: RI logs -->
     <section class="mt-10 space-y-4">
       <div class="flex items-center justify-between">
         <h2 class="text-2xl font-semibold">rapididentity debug log highlights (line by line)</h2>
@@ -234,7 +220,6 @@ smb: \> ^C
       </div>
     </section>
 
-    <!-- ORIGINAL: findings -->
     <section class="mt-10 space-y-6">
       <h2 class="text-2xl font-semibold">notes / findings</h2>
       <div class="bg-white shadow rounded-2xl p-5">
@@ -257,12 +242,10 @@ extra:
     </footer>
   </div>
 
-  <!-- Firebase (compat builds for simple static HTML) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore-compat.js"></script>
 
   <script>
-    // Firebase config (from your console)
     const firebaseConfig = {
       apiKey: "AlzaSyBK_f7xHtJS_Yqj6SWF6UGcPLGxX1SVrDw",
       authDomain: "test-d4e6b.firebaseapp.com",
@@ -272,20 +255,16 @@ extra:
       appId: "1:172115547160:web:9d8190327c4277df0b5f6d"
     };
 
-    // App init
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     db.enablePersistence({ synchronizeTabs: true }).catch(() => { /* ignore */ });
 
-    // List id via ?list=
     const listId = new URLSearchParams(location.search).get("list") || "cyfair";
     document.getElementById("inp-list").value = listId;
 
-    // Firestore refs
     const listDoc = db.collection("checklists").doc(listId);
     const itemsCol = listDoc.collection("items");
 
-    // Default plan (tonight)
     const DEFAULT_ITEMS = [
       { text: "Verify User Policies are OFF", checked: false },
       { text: "Precheck: smbclient DFS control → cd STU_HOME; list one student", checked: false },
@@ -301,7 +280,6 @@ extra:
       { text: "Update case with outputs and attach logs", checked: false }
     ];
 
-    // UI refs
     const elChecklist = document.getElementById("checklist");
     const elStu = document.getElementById("inp-stu");
     const elEmp = document.getElementById("inp-emp");
@@ -313,7 +291,6 @@ extra:
     const btnMarkAll = document.getElementById("btn-mark-all");
     const btnUnmarkAll = document.getElementById("btn-unmark-all");
 
-    // Commands
     function setCode(id, text) { const el = document.getElementById(id); if (el) el.textContent = text; }
     function updateCommands(stu, emp, enc) {
       const encFlag = enc ? " -e" : "";
@@ -325,7 +302,6 @@ extra:
       setCode("cmd-write-emp", writeEmp);
     }
 
-    // Ensure base doc + seed defaults
     async function ensureBaseDoc() {
       const snap = await listDoc.get();
       if (!snap.exists) {
@@ -351,7 +327,6 @@ extra:
       }
     }
 
-    // Render checklist items
     let itemsCache = [];
     function renderItems(docs) {
       itemsCache = docs;
@@ -377,7 +352,6 @@ extra:
       });
     }
 
-    // Buttons
     btnAdd.addEventListener("click", async () => {
       const text = (elNew.value || "").trim();
       if (!text) return toast("Enter an item");
@@ -423,12 +397,10 @@ extra:
       await batch.commit();
     });
 
-    // Settings sync (stu/emp/enc)
     elStu.addEventListener("input", () => listDoc.set({ stu: elStu.value || "S249612", updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true }));
     elEmp.addEventListener("input", () => listDoc.set({ emp: elEmp.value || "E085678", updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true }));
     elEnc.addEventListener("change", () => listDoc.set({ enc: !!elEnc.checked, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true }));
 
-    // Init subscriptions
     async function init() {
       await ensureBaseDoc();
       listDoc.onSnapshot(snap => {
@@ -441,7 +413,6 @@ extra:
       itemsCol.orderBy("order", "asc").onSnapshot(snap => renderItems(snap.docs));
     }
 
-    // tiny toast
     function toast(msg) {
       const t = document.createElement("div");
       t.textContent = msg;
@@ -450,7 +421,6 @@ extra:
       setTimeout(() => t.remove(), 1600);
     }
 
-    // copy helper
     async function copyFrom(id) {
       const el = document.getElementById(id);
       const text = el ? el.innerText : "";
@@ -458,7 +428,6 @@ extra:
       catch { toast("Copy failed"); }
     }
 
-    // go
     init();
   </script>
 </body>
