@@ -89,11 +89,10 @@
           <li>set <code>jcifs.smb.client.dfs.convertToFQDN=true</code> and restarted Folders.</li>
           <li>tested a single user; then turned off User Policies for safety.</li>
           <li><code>smbclient</code> to DFS root worked; <code>STU_HOME</code> traversed; <code>EMP_HOME</code> failed.</li>
-          <li>adding <code>CFISD\idauto</code> to <code>emp_home</code> failed from DFS side; points to share/NTFS/SMB policy on the NAS.</li>
+          <li>adding <code>CFISD\idauto</code> to <code>emp_home</code> failed from DFS side; points to share or NTFS or SMB policy on the NAS.</li>
         </ul>
       </div>
     </section>
-
 
     <section class="mt-10 space-y-4">
       <div class="bg-white shadow rounded-2xl p-5">
@@ -104,8 +103,7 @@
       <div class="bg-white shadow rounded-2xl p-5">
         <h2 class="text-xl font-semibold mb-2">next steps</h2>
         <ul class="list-disc pl-6 space-y-1">
-          <li>meet monday evening, ideally with a microsoft rep, to debug dfs live.</li>
-          <li>ray will review the data and bring a short list of targeted troubleshooting steps.</li>
+          <li>meet with Microsoft and the NAS admin to fix configuration, then retest.</li>
           <li>use the working <code>stu_home</code> share as a control to compare behavior and isolate what is different on <code>emp_home</code>.</li>
         </ul>
       </div>
@@ -113,18 +111,15 @@
 
     <section class="mt-10 space-y-6">
       <h2 class="text-2xl font-semibold">screenshots</h2>
-
       <figure class="bg-white shadow rounded-2xl p-5">
         <figcaption class="font-medium mb-3">rapididentity ui + terminal overlay</figcaption>
         <img class="rounded-xl w-full" src="assets/error-terminal.png" alt="error terminal">
         <p class="text-sm text-slate-600 mt-2">note: earlier we saw ping to the nas returning different ips. captured here.</p>
       </figure>
-
       <figure class="bg-white shadow rounded-2xl p-5">
         <figcaption class="font-medium mb-3">centos repo lookup error (not directly related)</figcaption>
         <img class="rounded-xl w-full" src="assets/centos-dnf-error.png" alt="centos dnf error">
       </figure>
-
       <figure class="bg-white shadow rounded-2xl p-5">
         <figcaption class="font-medium mb-3">windows error when trying to add service account to emp_home</figcaption>
         <img class="rounded-xl w-full" src="assets/dfs-error.png" alt="dfs error">
@@ -199,7 +194,7 @@ smb: \> ^C
                 onclick="copyFrom('ri-log-block')">Copy all</button>
       </div>
       <div class="bg-white shadow rounded-2xl">
-        <div class="border-b px-5 py-3 text-sm text-slate-600">most recent log with jcifs logging set to DEBUG. filtered for dfs/smb/jcifs events, NT_STATUS lines, and emp_home/stu_home mentions.</div>
+        <div class="border-b px-5 py-3 text-sm text-slate-600">jcifs debug on. filtered for dfs, smb, jcifs, NT_STATUS, emp_home or stu_home.</div>
         <pre id="ri-log-block" class="bg-slate-900 text-slate-100 p-4 rounded-b-2xl overflow-auto max-h-96 whitespace-pre"><code>
 000123: [DEBUG] Applying LogConfig for jcifs.smb to DEBUG
 000847: [DEBUG] jcifs.smb.client.dfs.convertToFQDN=true picked up on restart
@@ -212,11 +207,28 @@ smb: \> ^C
 001145: [DEBUG] Evaluating DFS referral for link emp_home
 001146: [DEBUG] Referral target: \\cftech.cfisd.loc\\emp_home
 001147: [DEBUG] SMB2_TREE_CONNECT to \\cftech.cfisd.loc\\emp_home
-001148: [WARN ] NT_STATUS_ACCESS_DENIED on \\cftech.cfisd.loc\\emp_home (service account traverse denied)
+001148: [WARN ] NT_STATUS_ACCESS_DENIED on \\cftech.cfisd.loc\\emp_home
 001149: [DEBUG] Policy result: cannot traverse emp_home; stu_home remains accessible
 001512: [DEBUG] SmbFile.exists() returned false for \\cfisd.loc\\DFS_Shares\\Emp_Home\\E085678
 001700: [INFO ] userStatesWithErrorsPaged: found 1 affected user(s), limiting to test scope
         </code></pre>
+      </div>
+    </section>
+
+    <!-- Wake signature checker -->
+    <section class="mt-10 space-y-4">
+      <div class="bg-white shadow rounded-2xl p-5">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xl font-semibold">wake-style jcifs path parsing - quick check</h2>
+          <div class="text-xs text-slate-500">paste RI log lines below, then click highlight</div>
+        </div>
+        <textarea id="log-input" class="mt-3 w-full h-40 border border-slate-300 rounded-lg p-3 font-mono text-sm" placeholder="paste log lines here"></textarea>
+        <div class="mt-2 flex gap-2">
+          <button id="btn-analyze" class="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-sm">Highlight</button>
+          <button id="btn-copy-flagged" class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-900 text-sm">Copy flagged</button>
+          <span id="sig-result" class="text-sm text-slate-600 ml-2"></span>
+        </div>
+        <pre id="log-flagged" class="mt-3 bg-slate-900 text-slate-100 p-3 rounded-lg overflow-auto whitespace-pre-wrap max-h-80"></pre>
       </div>
     </section>
 
@@ -257,7 +269,7 @@ extra:
 
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-    db.enablePersistence({ synchronizeTabs: true }).catch(() => { /* ignore */ });
+    db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
 
     const listId = new URLSearchParams(location.search).get("list") || "cyfair";
     document.getElementById("inp-list").value = listId;
@@ -267,15 +279,16 @@ extra:
 
     const DEFAULT_ITEMS = [
       { text: "Verify User Policies are OFF", checked: false },
-      { text: "Precheck: smbclient DFS control → cd STU_HOME; list one student", checked: false },
-      { text: "Precheck: smbclient DFS under test → cd EMP_HOME; list one employee (expect fail)", checked: false },
+      { text: "Precheck: smbclient DFS control -> cd STU_HOME; allinfo one student", checked: false },
+      { text: "Precheck: smbclient DFS under test -> cd EMP_HOME; allinfo one employee (expect fail)", checked: false },
       { text: "Capture exact NT_STATUS lines in case notes", checked: false },
-      { text: "Microsoft/NAS fixes: DFS referral, share/NTFS ACLs, SMB policy", checked: false },
+      { text: "Enable jcifs.smb DEBUG, then run 1 test user", checked: false },
+      { text: "Look for 'UNC is / Consumed / Remaining' lines (Wake signature)", checked: false },
+      { text: "Microsoft or NAS fixes: DFS referral, share/NTFS ACLs, SMB policy", checked: false },
       { text: "Re-test: EMP_HOME list one employee", checked: false },
       { text: "Re-test: mkdir and rmdir at EMP_HOME root", checked: false },
-      { text: "If still blocked: jCIFS DEBUG + single-user reproduce", checked: false },
-      { text: "After fixes: turn ON policy for 1 test user; verify logs", checked: false },
-      { text: "After hotfix clears QA: update appliance", checked: false },
+      { text: "After fixes: enable policy for 1 test user; verify logs", checked: false },
+      { text: "After hotfix from QA: update appliance", checked: false },
       { text: "Enable all user policies", checked: false },
       { text: "Update case with outputs and attach logs", checked: false }
     ];
@@ -427,6 +440,34 @@ extra:
       try { await navigator.clipboard.writeText(text); toast("Copied"); }
       catch { toast("Copy failed"); }
     }
+
+    const inp = document.getElementById('log-input');
+    const out = document.getElementById('log-flagged');
+    const sig = document.getElementById('sig-result');
+    document.getElementById('btn-analyze').addEventListener('click', () => {
+      const lines = (inp.value || '').split(/\r?\n/);
+      const want = /(SmbResourceLocatorImpl|UNC is|Consumed|Remaining|NT_STATUS|SmbException)/i;
+      const flagged = [];
+      const buckets = {};
+      for (const ln of lines) {
+        if (want.test(ln)) {
+          flagged.push(ln);
+          const ts = (ln.match(/^\d{1,2}:\d{2}:\d{2}\.\d{3}/) || [''])[0];
+          if (!buckets[ts]) buckets[ts] = {unc:0,cons:0,rem:0};
+          if (/UNC is/i.test(ln)) buckets[ts].unc++;
+          if (/Consumed/i.test(ln)) buckets[ts].cons++;
+          if (/Remaining/i.test(ln)) buckets[ts].rem++;
+        }
+      }
+      out.textContent = flagged.join('\n');
+      const hit = Object.values(buckets).some(b => b.unc && b.cons && b.rem);
+      sig.textContent = hit ? 'Possible Wake-style path munging found' : 'No obvious path-munging signature';
+      sig.className = hit ? 'text-sm text-rose-700' : 'text-sm text-emerald-700';
+    });
+    document.getElementById('btn-copy-flagged').addEventListener('click', async () => {
+      try { await navigator.clipboard.writeText(out.textContent || ''); toast('Copied'); }
+      catch { toast('Copy failed'); }
+    });
 
     init();
   </script>
