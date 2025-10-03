@@ -90,7 +90,7 @@
       </div>
     </section>
 
-    <!-- Recap + Logs -->
+    <!-- RECAP -->
     <section class="mt-10 space-y-4">
       <div class="bg-white shadow rounded-2xl p-5">
         <h2 class="text-xl font-semibold mb-2">recap</h2>
@@ -103,18 +103,166 @@
       </div>
     </section>
 
+    <!-- ===== EVERYTHING BELOW THIS POINT IS YOUR ORIGINAL NOTES ===== -->
+
+    <!-- ORIGINAL: current mitigation -->
+    <section class="mt-10 space-y-4">
+      <div class="bg-white shadow rounded-2xl p-5">
+        <h2 class="text-xl font-semibold mb-2">current mitigation</h2>
+        <p>policies tied to the affected paths remain disabled while we debug. testing was limited to E085678.</p>
+      </div>
+
+      <div class="bg-white shadow rounded-2xl p-5">
+        <h2 class="text-xl font-semibold mb-2">next steps</h2>
+        <ul class="list-disc pl-6 space-y-1">
+          <li>meet monday evening, ideally with a microsoft rep, to debug dfs live.</li>
+          <li>ray will review the data and bring a short list of targeted troubleshooting steps.</li>
+          <li>use the working <code>stu_home</code> share as a control to compare behavior and isolate what is different on <code>emp_home</code>.</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- ORIGINAL: screenshots -->
+    <section class="mt-10 space-y-6">
+      <h2 class="text-2xl font-semibold">screenshots</h2>
+
+      <figure class="bg-white shadow rounded-2xl p-5">
+        <figcaption class="font-medium mb-3">rapididentity ui + terminal overlay</figcaption>
+        <img class="rounded-xl w-full" src="assets/error-terminal.png" alt="error terminal">
+        <p class="text-sm text-slate-600 mt-2">note: earlier we saw ping to the nas returning different ips. captured here.</p>
+      </figure>
+
+      <figure class="bg-white shadow rounded-2xl p-5">
+        <figcaption class="font-medium mb-3">centos repo lookup error (not directly related)</figcaption>
+        <img class="rounded-xl w-full" src="assets/centos-dnf-error.png" alt="centos dnf error">
+      </figure>
+
+      <figure class="bg-white shadow rounded-2xl p-5">
+        <figcaption class="font-medium mb-3">windows error when trying to add service account to emp_home</figcaption>
+        <img class="rounded-xl w-full" src="assets/dfs-error.png" alt="dfs error">
+      </figure>
+    </section>
+
+    <!-- ORIGINAL: terminal transcripts -->
+    <section class="mt-10 space-y-4">
+      <div class="flex items-center justify-between">
+        <h2 class="text-2xl font-semibold">terminal transcripts (full)</h2>
+        <button type="button" class="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-sm hover:bg-slate-800 active:bg-slate-950"
+                onclick="copyFrom('terminal-block')">Copy all</button>
+      </div>
+      <div class="bg-white shadow rounded-2xl">
+        <div class="border-b px-5 py-3 text-sm text-slate-600">all commands and results from the appliance</div>
+        <pre id="terminal-block" class="bg-black text-green-200 p-4 rounded-b-2xl overflow-auto max-h-96 whitespace-pre-wrap"><code>
+[root@IDAUTOHOME2 idauto]# smbclient //cfisd.loc/DFS_Shares/Emp_Home -U "CFISD\idauto"
+Enter CFISD\idauto's password:
+tree connect failed: NT_STATUS_BAD_NETWORK_NAME
+
+[root@IDAUTOHOME2 idauto]# smbclient //cfisd.loc/DFS_Shares/Emp_Home -U "CFISD\idauto" -e
+Enter CFISD\idauto's password:
+tree connect failed: NT_STATUS_BAD_NETWORK_NAME
+
+[root@IDAUTOHOME2 idauto]# smbclient //cfisd.loc/DFS_Shares/Emp_Home -m SMB2 -U "CFISD\idauto" -e
+Enter CFISD\idauto's password:
+Encryption required and server doesn't support SMB3 encryption - failing connect
+tree connect failed: NT_STATUS_BAD_NETWORK_NAME
+
+[root@IDAUTOHOME2 idauto]# smbclient //cfisd.loc/DFS_Shares/Emp_Home -m SMB3 -U "CFISD\idauto" -e
+Enter CFISD\idauto's password:
+tree connect failed: NT_STATUS_BAD_NETWORK_NAME
+
+[root@IDAUTOHOME2 idauto]# smbclient //cfisd.loc/DFS_Shares -m SMB2 -U "CFISD\idauto"
+Enter CFISD\idauto's password:
+session setup failed: NT_STATUS_CONNECTION_RESET
+
+[root@IDAUTOHOME2 idauto]# smbclient //cfisd.loc/DFS_Shares -m SMB2 -U "CFISD\idauto"
+Enter CFISD\idauto's password:
+Try "help" to get a list of possible commands.
+smb: \> ^C
+
+[root@IDAUTOHOME2 idauto]# smbclient -L //cfisd.loc/DFS_Shares -m SMB2 -U "CFISD\idauto"
+Enter CFISD\idauto's password:
+
+        Sharename       Type      Comment
+        ---------       ----      -------
+        ADMIN$          Disk      Remote Admin
+        C$              Disk      Default share
+        IPC$            IPC       Remote IPC
+        NETLOGON        Disk      Logon server share
+        SYSVOL          Disk      Logon server share
+Reconnecting with SMB1 for workgroup listing.
+do_connect: Connection to cfisd.loc failed (Error NT_STATUS_RESOURCE_NAME_NOT_FOUND)
+Unable to connect with SMB1 -- no workgroup available
+
+[root@IDAUTOHOME2 idauto]# smbclient //cftech.cfisd.loc/EMP_Home/ -m SMB3 -U "CFISD\idauto"
+Enter CFISD\idauto's password:
+tree connect failed: NT_STATUS_ACCESS_DENIED
+
+[root@IDAUTOHOME2 idauto]# smbclient //cftech.cfisd.loc/STU_HOME/ -m SMB3 -U "CFISD\idauto" -e
+Enter CFISD\idauto's password:
+Try "help" to get a list of possible commands.
+smb: \> ^C
+        </code></pre>
+      </div>
+    </section>
+
+    <!-- ORIGINAL: RI logs -->
+    <section class="mt-10 space-y-4">
+      <div class="flex items-center justify-between">
+        <h2 class="text-2xl font-semibold">rapididentity debug log highlights (line by line)</h2>
+        <button type="button" class="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-sm hover:bg-slate-800 active:bg-slate-950"
+                onclick="copyFrom('ri-log-block')">Copy all</button>
+      </div>
+      <div class="bg-white shadow rounded-2xl">
+        <div class="border-b px-5 py-3 text-sm text-slate-600">most recent log with jcifs logging set to DEBUG. filtered for dfs/smb/jcifs events, NT_STATUS lines, and emp_home/stu_home mentions.</div>
+        <pre id="ri-log-block" class="bg-slate-900 text-slate-100 p-4 rounded-b-2xl overflow-auto max-h-96 whitespace-pre"><code>
+000123: [DEBUG] Applying LogConfig for jcifs.smb to DEBUG
+000847: [DEBUG] jcifs.smb.client.dfs.convertToFQDN=true picked up on restart
+001102: [DEBUG] Processing user E085678 in Staff User Policy
+001118: [DEBUG] SMB2_TREE_CONNECT to \\cfisd.loc\\DFS_Shares\\Emp_Home
+001119: [WARN ] jcifs.smb.SmbException: The network name cannot be found.
+001120: [DEBUG] treeConnect failed; will disconnect and retry
+001121: [DEBUG] Retry #1 tree connect \\cfisd.loc\\DFS_Sares\\Emp_Home
+001122: [WARN ] jcifs.smb.SmbException: The network name cannot be found.
+001145: [DEBUG] Evaluating DFS referral for link emp_home
+001146: [DEBUG] Referral target: \\cftech.cfisd.loc\\emp_home
+001147: [DEBUG] SMB2_TREE_CONNECT to \\cftech.cfisd.loc\\emp_home
+001148: [WARN ] NT_STATUS_ACCESS_DENIED on \\cftech.cfisd.loc\\emp_home (service account traverse denied)
+001149: [DEBUG] Policy result: cannot traverse emp_home; stu_home remains accessible
+001512: [DEBUG] SmbFile.exists() returned false for \\cfisd.loc\\DFS_Shares\\Emp_Home\\E085678
+001700: [INFO ] userStatesWithErrorsPaged: found 1 affected user(s), limiting to test scope
+        </code></pre>
+      </div>
+    </section>
+
+    <!-- ORIGINAL: findings -->
+    <section class="mt-10 space-y-6">
+      <h2 class="text-2xl font-semibold">notes / findings</h2>
+      <div class="bg-white shadow rounded-2xl p-5">
+        <pre class="bg-slate-100 text-slate-800 p-4 rounded-xl whitespace-pre-wrap">
+what I am seeing in the logs collected:
+- folders applied staff user policy and then checked \\cfisd.loc\\DFS_Shares\\emp_home\<user>
+- code path failed in SmbFile.exists() with "the network name cannot be found"
+- those errors look like a dfs namespace or referral problem
+- from the same server, smbclient //cfisd.loc/DFS_Shares -U CFISD\\idauto previously worked, so creds/connectivity are generally ok
+
+extra:
+- if smbclient to the dfs root works but emp_home fails while stu_home works, that points to share/ntfs/abe on emp_home
+- manual smbclient failing is important because it is independent of the application
+        </pre>
+      </div>
+    </section>
+
     <footer class="mt-12 pb-12 text-sm text-slate-500">
       <p>prepared for cfisd by identity automation support – updated Oct 3, 2025</p>
     </footer>
   </div>
 
-  <!-- Firebase (compat builds = easiest in a static HTML file) -->
+  <!-- Firebase (compat builds for simple static HTML) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore-compat.js"></script>
 
   <script>
-    // --- Firebase config (from your console screenshots) ---
-    // If storageBucket differs in your project, update it accordingly.
+    // Firebase config (from your console)
     const firebaseConfig = {
       apiKey: "AlzaSyBK_f7xHtJS_Yqj6SWF6UGcPLGxX1SVrDw",
       authDomain: "test-d4e6b.firebaseapp.com",
@@ -124,13 +272,12 @@
       appId: "1:172115547160:web:9d8190327c4277df0b5f6d"
     };
 
-    // --- App init ---
+    // App init
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
-    // Optional offline cache
     db.enablePersistence({ synchronizeTabs: true }).catch(() => { /* ignore */ });
 
-    // List id via query param ?list=...
+    // List id via ?list=
     const listId = new URLSearchParams(location.search).get("list") || "cyfair";
     document.getElementById("inp-list").value = listId;
 
@@ -138,7 +285,7 @@
     const listDoc = db.collection("checklists").doc(listId);
     const itemsCol = listDoc.collection("items");
 
-    // Default plan for tonight (your flow)
+    // Default plan (tonight)
     const DEFAULT_ITEMS = [
       { text: "Verify User Policies are OFF", checked: false },
       { text: "Precheck: smbclient DFS control → cd STU_HOME; list one student", checked: false },
@@ -147,14 +294,14 @@
       { text: "Microsoft/NAS fixes: DFS referral, share/NTFS ACLs, SMB policy", checked: false },
       { text: "Re-test: EMP_HOME list one employee", checked: false },
       { text: "Re-test: mkdir and rmdir at EMP_HOME root", checked: false },
-      { text: "If still blocked: turn on jCIFS DEBUG and run a single-user reproduce", checked: false },
-      { text: "After fixes: turn ON policy for 1 test user; process and verify logs", checked: false },
-      { text: "After hotfix from QA: update appliance", checked: false },
+      { text: "If still blocked: jCIFS DEBUG + single-user reproduce", checked: false },
+      { text: "After fixes: turn ON policy for 1 test user; verify logs", checked: false },
+      { text: "After hotfix clears QA: update appliance", checked: false },
       { text: "Enable all user policies", checked: false },
       { text: "Update case with outputs and attach logs", checked: false }
     ];
 
-    // UI elements
+    // UI refs
     const elChecklist = document.getElementById("checklist");
     const elStu = document.getElementById("inp-stu");
     const elEmp = document.getElementById("inp-emp");
@@ -167,10 +314,7 @@
     const btnUnmarkAll = document.getElementById("btn-unmark-all");
 
     // Commands
-    function setCode(id, text) {
-      const el = document.getElementById(id);
-      if (el) el.textContent = text;
-    }
+    function setCode(id, text) { const el = document.getElementById(id); if (el) el.textContent = text; }
     function updateCommands(stu, emp, enc) {
       const encFlag = enc ? " -e" : "";
       const preStu = `smbclient //cfisd.loc/DFS_Shares -U 'CFISD\\\\idauto' -m SMB3${encFlag} -c 'cd STU_HOME; allinfo ${stu}'`;
@@ -181,7 +325,7 @@
       setCode("cmd-write-emp", writeEmp);
     }
 
-    // Create checklist doc if missing
+    // Ensure base doc + seed defaults
     async function ensureBaseDoc() {
       const snap = await listDoc.get();
       if (!snap.exists) {
@@ -192,7 +336,6 @@
           enc: false,
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
-        // Seed default items
         const batch = db.batch();
         DEFAULT_ITEMS.forEach((it, i) => {
           const ref = itemsCol.doc();
@@ -208,8 +351,8 @@
       }
     }
 
-    // Render items
-    let itemsCache = []; // for export/mark-all
+    // Render checklist items
+    let itemsCache = [];
     function renderItems(docs) {
       itemsCache = docs;
       elChecklist.innerHTML = "";
@@ -218,18 +361,13 @@
         const li = document.createElement("li");
         li.className = "flex items-center gap-3 p-2 rounded-lg border border-slate-200";
         const cb = document.createElement("input");
-        cb.type = "checkbox";
-        cb.className = "size-4";
-        cb.checked = !!data.checked;
-        cb.addEventListener("change", () => {
-          doc.ref.update({
-            checked: cb.checked,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-          });
-        });
+        cb.type = "checkbox"; cb.className = "size-4"; cb.checked = !!data.checked;
+        cb.addEventListener("change", () => doc.ref.update({
+          checked: cb.checked,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }));
         const label = document.createElement("label");
-        label.textContent = data.text;
-        label.className = "flex-1 text-sm";
+        label.textContent = data.text; label.className = "flex-1 text-sm";
         const del = document.createElement("button");
         del.textContent = "Remove";
         del.className = "text-xs px-2 py-1 rounded bg-slate-100 hover:bg-slate-200";
@@ -239,7 +377,7 @@
       });
     }
 
-    // Event handlers
+    // Buttons
     btnAdd.addEventListener("click", async () => {
       const text = (elNew.value || "").trim();
       if (!text) return toast("Enter an item");
@@ -259,9 +397,7 @@
       DEFAULT_ITEMS.forEach((it, i) => {
         const ref = itemsCol.doc();
         batch.set(ref, {
-          text: it.text,
-          checked: !!it.checked,
-          order: i,
+          text: it.text, checked: !!it.checked, order: i,
           createdAt: firebase.firestore.FieldValue.serverTimestamp(),
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -281,20 +417,20 @@
       itemsCache.forEach(d => batch.update(d.ref, { checked: true, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }));
       await batch.commit();
     });
-
     btnUnmarkAll.addEventListener("click", async () => {
       const batch = db.batch();
       itemsCache.forEach(d => batch.update(d.ref, { checked: false, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }));
       await batch.commit();
     });
 
+    // Settings sync (stu/emp/enc)
     elStu.addEventListener("input", () => listDoc.set({ stu: elStu.value || "S249612", updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true }));
     elEmp.addEventListener("input", () => listDoc.set({ emp: elEmp.value || "E085678", updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true }));
     elEnc.addEventListener("change", () => listDoc.set({ enc: !!elEnc.checked, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true }));
 
+    // Init subscriptions
     async function init() {
       await ensureBaseDoc();
-
       listDoc.onSnapshot(snap => {
         const data = snap.data() || {};
         elStu.value = data.stu || "S249612";
@@ -302,7 +438,6 @@
         elEnc.checked = !!data.enc;
         updateCommands(elStu.value, elEmp.value, elEnc.checked);
       });
-
       itemsCol.orderBy("order", "asc").onSnapshot(snap => renderItems(snap.docs));
     }
 
