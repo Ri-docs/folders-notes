@@ -1,38 +1,38 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CFISD DFS/SMB troubleshooting notes - Oct 3, 2025</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CFISD DFS/SMB troubleshooting notes – Oct 3, 2025</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-    .kbd { border: 1px solid #cbd5e1; background: #f8fafc; padding: 0.1rem 0.35rem; border-radius: 0.375rem; font-size: 0.85em; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
   <div class="max-w-5xl mx-auto px-4 py-8">
     <header class="mb-8">
-      <h1 class="text-3xl font-semibold">CFISD - DFS / SMB troubleshooting notes</h1>
+      <h1 class="text-3xl font-semibold">CFISD – DFS / SMB troubleshooting notes</h1>
       <p class="text-sm text-slate-600 mt-1">Session date: Sep 26, 2025</p>
-      <p class="text-sm text-slate-600">Tonight plan: Oct 3, 2025</p>
+      <p class="text-sm text-slate-600">Tonight plan: Oct 3, 2025 • Live collaborative checklist (Firestore)</p>
+      <p class="text-xs text-slate-500 mt-1">Tip: add <code>?list=cyfair</code> or another id to the URL to create/use a different checklist.</p>
     </header>
 
-    <!-- TONIGHT PLAN CHECKLIST -->
+    <!-- CHECKLIST -->
     <section class="space-y-4">
       <div class="bg-white shadow rounded-2xl p-5">
-        <div class="flex items-center justify-between">
-          <h2 class="text-xl font-semibold mb-2">Tonight plan checklist</h2>
+        <div class="flex items-center justify-between gap-3 flex-wrap">
+          <h2 class="text-xl font-semibold">Tonight plan checklist</h2>
           <div class="flex flex-wrap gap-2">
-            <button id="btn-mark-all" class="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-sm hover:bg-slate-800 active:bg-slate-950">Mark all done</button>
+            <button id="btn-mark-all" class="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-sm hover:bg-slate-800">Mark all done</button>
             <button id="btn-unmark-all" class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-900 text-sm hover:bg-slate-200">Unmark all</button>
             <button id="btn-reset" class="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 text-sm hover:bg-rose-100">Restore defaults</button>
-            <button id="btn-export" class="px-3 py-1.5 rounded-lg bg-sky-50 text-sky-700 text-sm hover:bg-sky-100">Export checklist</button>
+            <button id="btn-export" class="px-3 py-1.5 rounded-lg bg-sky-50 text-sky-700 text-sm hover:bg-sky-100">Export</button>
           </div>
         </div>
 
-        <!-- Test IDs and settings row -->
-        <div class="grid sm:grid-cols-3 gap-3 mt-3">
+        <!-- Controls -->
+        <div class="grid sm:grid-cols-4 gap-3 mt-3">
           <label class="text-sm">Student test ID
             <input id="inp-stu" type="text" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-1.5" placeholder="S249612" />
           </label>
@@ -41,11 +41,14 @@
           </label>
           <label class="flex items-center gap-2 text-sm mt-6 sm:mt-0">
             <input id="chk-enc" type="checkbox" class="size-4" />
-            <span>Add -e encryption flag to smbclient commands</span>
+            <span>Add <code>-e</code> encryption flag to smbclient</span>
+          </label>
+          <label class="text-sm">List id (query param)
+            <input id="inp-list" type="text" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-1.5" disabled />
           </label>
         </div>
 
-        <!-- Checklist list -->
+        <!-- Checklist items -->
         <ul id="checklist" class="mt-4 space-y-2"></ul>
 
         <!-- Add custom item -->
@@ -59,19 +62,19 @@
       <div class="bg-white shadow rounded-2xl p-5">
         <div class="flex items-center justify-between">
           <h2 class="text-xl font-semibold">Quick commands</h2>
-          <div class="text-xs text-slate-500">All commands run on the appliance. Password is entered at prompt.</div>
+          <div class="text-xs text-slate-500">Run on the appliance. Enter password at the prompt.</div>
         </div>
         <div class="mt-3 grid md:grid-cols-2 gap-4">
           <div class="border rounded-xl p-3">
             <div class="flex items-center justify-between">
-              <h3 class="font-medium">DFS control - list one student</h3>
+              <h3 class="font-medium">DFS control (student) – list one</h3>
               <button class="px-2 py-1 rounded bg-slate-900 text-white text-xs" onclick="copyFrom('cmd-pre-stu')">Copy</button>
             </div>
             <pre id="cmd-pre-stu" class="mt-2 bg-slate-900 text-slate-100 p-3 rounded-lg overflow-auto whitespace-pre-wrap"><code></code></pre>
           </div>
           <div class="border rounded-xl p-3">
             <div class="flex items-center justify-between">
-              <h3 class="font-medium">DFS under test - list one employee</h3>
+              <h3 class="font-medium">DFS under test (employee) – list one</h3>
               <button class="px-2 py-1 rounded bg-slate-900 text-white text-xs" onclick="copyFrom('cmd-pre-emp')">Copy</button>
             </div>
             <pre id="cmd-pre-emp" class="mt-2 bg-slate-900 text-slate-100 p-3 rounded-lg overflow-auto whitespace-pre-wrap"><code></code></pre>
@@ -87,314 +90,223 @@
       </div>
     </section>
 
-    <!-- ORIGINAL SECTIONS -->
+    <!-- Recap + Logs -->
     <section class="mt-10 space-y-4">
       <div class="bg-white shadow rounded-2xl p-5">
         <h2 class="text-xl font-semibold mb-2">recap</h2>
-        <p class="mb-3">here is a quick summary from that session and where we landed.</p>
         <ul class="list-disc pl-6 space-y-1">
-          <li>updated system.properties with ray's setting: <code>jcifs.smb.client.dfs.convertToFQDN=true</code>, then restarted folders.</li>
-          <li>re-processed a single test user (E085678). user policies were later turned off while we continued to test.</li>
-          <li>manual dfs connect from the appliance using <code>smbclient</code> failed on the domain dfs path: <code>smbclient //cfisd.loc/DFS_Shares/Emp_Home -U CFISD\idauto</code> -> <span class="font-mono">NT_STATUS_BAD_NETWORK_NAME</span>.</li>
-          <li>attempt to add <code>CFISD\idauto</code> to the <code>emp_home</code> share failed on their side. that points to a permission or protocol constraint on that share.</li>
-          <li>not presenting as dns now. this looks more like a configuration mismatch between the nas or smb service and the appliance specific to <code>emp_home</code>.</li>
-          <li><code>stu_home</code> is accessible, but <code>emp_home</code> is not, using the same service account.</li>
+          <li>set <code>jcifs.smb.client.dfs.convertToFQDN=true</code> and restarted Folders.</li>
+          <li>tested a single user; then turned off User Policies for safety.</li>
+          <li><code>smbclient</code> to DFS root worked; <code>STU_HOME</code> traversed; <code>EMP_HOME</code> failed.</li>
+          <li>adding <code>CFISD\idauto</code> to <code>emp_home</code> failed from DFS side; points to share/NTFS/SMB policy on the NAS.</li>
         </ul>
-      </div>
-
-      <div class="bg-white shadow rounded-2xl p-5">
-        <h2 class="text-xl font-semibold mb-2">current mitigation</h2>
-        <p>policies tied to the affected paths remain disabled while we debug. testing was limited to E085678.</p>
-      </div>
-
-      <div class="bg-white shadow rounded-2xl p-5">
-        <h2 class="text-xl font-semibold mb-2">next steps</h2>
-        <ul class="list-disc pl-6 space-y-1">
-          <li>meet with Microsoft and NAS admin to debug dfs live.</li>
-          <li>use the working <code>stu_home</code> share as a control to compare behavior and isolate what is different on <code>emp_home</code>.</li>
-        </ul>
-      </div>
-    </section>
-
-    <!-- SCREENSHOTS -->
-    <section class="mt-10 space-y-6">
-      <h2 class="text-2xl font-semibold">screenshots</h2>
-
-      <figure class="bg-white shadow rounded-2xl p-5">
-        <figcaption class="font-medium mb-3">rapididentity ui + terminal overlay</figcaption>
-        <img class="rounded-xl w-full" src="assets/error-terminal.png" alt="error terminal">
-        <p class="text-sm text-slate-600 mt-2">note: earlier we saw ping to the nas returning different ips. captured here.</p>
-      </figure>
-
-      <figure class="bg-white shadow rounded-2xl p-5">
-        <figcaption class="font-medium mb-3">centos repo lookup error</figcaption>
-        <img class="rounded-xl w-full" src="assets/centos-dnf-error.png" alt="centos dnf error">
-      </figure>
-
-      <figure class="bg-white shadow rounded-2xl p-5">
-        <figcaption class="font-medium mb-3">windows error when trying to add service account to emp_home</figcaption>
-        <img class="rounded-xl w-full" src="assets/dfs-error.png" alt="dfs error">
-      </figure>
-    </section>
-
-    <!-- TERMINAL -->
-    <section class="mt-10 space-y-4">
-      <div class="flex items-center justify-between">
-        <h2 class="text-2xl font-semibold">terminal transcripts (full)</h2>
-        <button type="button" class="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-sm hover:bg-slate-800 active:bg-slate-950" onclick="copyFrom('terminal-block')">Copy all</button>
-      </div>
-      <div class="bg-white shadow rounded-2xl">
-        <div class="border-b px-5 py-3 text-sm text-slate-600">all commands and results from the appliance</div>
-        <pre id="terminal-block" class="bg-black text-green-200 p-4 rounded-b-2xl overflow-auto max-h-96 whitespace-pre-wrap"><code>
-[root@IDAUTOHOME2 idauto]# smbclient //cfisd.loc/DFS_Shares/Emp_Home -U "CFISD\idauto"
-Enter CFISD\idauto's password:
-tree connect failed: NT_STATUS_BAD_NETWORK_NAME
-
-[root@IDAUTOHOME2 idauto]# smbclient //cfisd.loc/DFS_Shares/Emp_Home -U "CFISD\idauto" -e
-Enter CFISD\idauto's password:
-tree connect failed: NT_STATUS_BAD_NETWORK_NAME
-
-[root@IDAUTOHOME2 idauto]# smbclient //cfisd.loc/DFS_Shares/Emp_Home -m SMB2 -U "CFISD\idauto" -e
-Enter CFISD\idauto's password:
-Encryption required and server does not support SMB3 encryption - failing connect
-tree connect failed: NT_STATUS_BAD_NETWORK_NAME
-
-[root@IDAUTOHOME2 idauto]# smbclient //cfisd.loc/DFS_Sares/Emp_Home -m SMB3 -U "CFISD\idauto" -e
-Enter CFISD\idauto's password:
-tree connect failed: NT_STATUS_BAD_NETWORK_NAME
-
-[root@IDAUTOHOME2 idauto]# smbclient //cfisd.loc/DFS_Shares -m SMB2 -U "CFISD\idauto"
-Enter CFISD\idauto's password:
-session setup failed: NT_STATUS_CONNECTION_RESET
-
-[root@IDAUTOHOME2 idauto]# smbclient //cfisd.loc/DFS_Shares -m SMB2 -U "CFISD\idauto"
-Enter CFISD\idauto's password:
-Try "help" to get a list of possible commands.
-smb: \> ^C
-
-[root@IDAUTOHOME2 idauto]# smbclient -L //cfisd.loc/DFS_Shares -m SMB2 -U "CFISD\idauto"
-Enter CFISD\idauto's password:
-
-        Sharename       Type      Comment
-        ---------       ----      -------
-        ADMIN$          Disk      Remote Admin
-        C$              Disk      Default share
-        IPC$            IPC       Remote IPC
-        NETLOGON        Disk      Logon server share
-        SYSVOL          Disk      Logon server share
-Reconnecting with SMB1 for workgroup listing.
-do_connect: Connection to cfisd.loc failed (Error NT_STATUS_RESOURCE_NAME_NOT_FOUND)
-Unable to connect with SMB1 -- no workgroup available
-
-[root@IDAUTOHOME2 idauto]# smbclient //cftech.cfisd.loc/EMP_Home/ -m SMB3 -U "CFISD\idauto"
-Enter CFISD\idauto's password:
-tree connect failed: NT_STATUS_ACCESS_DENIED
-
-[root@IDAUTOHOME2 idauto]# smbclient //cftech.cfisd.loc/STU_HOME/ -m SMB3 -U "CFISD\idauto" -e
-Enter CFISD\idauto's password:
-Try "help" to get a list of possible commands.
-smb: \> ^C
-        </code></pre>
-      </div>
-    </section>
-
-    <!-- RI LOGS -->
-    <section class="mt-10 space-y-4">
-      <div class="flex items-center justify-between">
-        <h2 class="text-2xl font-semibold">rapididentity debug log highlights (line by line)</h2>
-        <button type="button" class="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-sm hover:bg-slate-800 active:bg-slate-950" onclick="copyFrom('ri-log-block')">Copy all</button>
-      </div>
-      <div class="bg-white shadow rounded-2xl">
-        <div class="border-b px-5 py-3 text-sm text-slate-600">most recent log with jcifs logging set to DEBUG. filtered for dfs or smb or jcifs events, NT_STATUS lines, and emp_home or stu_home mentions.</div>
-        <pre id="ri-log-block" class="bg-slate-900 text-slate-100 p-4 rounded-b-2xl overflow-auto max-h-96 whitespace-pre"><code>
-000123: [DEBUG] Applying LogConfig for jcifs.smb to DEBUG
-000847: [DEBUG] jcifs.smb.client.dfs.convertToFQDN=true picked up on restart
-001102: [DEBUG] Processing user E085678 in Staff User Policy
-001118: [DEBUG] SMB2_TREE_CONNECT to \\cfisd.loc\\DFS_Shares\\Emp_Home
-001119: [WARN ] jcifs.smb.SmbException: The network name cannot be found.
-001120: [DEBUG] treeConnect failed; will disconnect and retry
-001121: [DEBUG] Retry #1 tree connect \\cfisd.loc\\DFS_Shares\\Emp_Home
-001122: [WARN ] jcifs.smb.SmbException: The network name cannot be found.
-001145: [DEBUG] Evaluating DFS referral for link emp_home
-001146: [DEBUG] Referral target: \\cftech.cfisd.loc\\emp_home
-001147: [DEBUG] SMB2_TREE_CONNECT to \\cftech.cfisd.loc\\emp_home
-001148: [WARN ] NT_STATUS_ACCESS_DENIED on \\cftech.cfisd.loc\\emp_home (service account traverse denied)
-001149: [DEBUG] Policy result: cannot traverse emp_home; stu_home remains accessible
-001512: [DEBUG] SmbFile.exists() returned false for \\cfisd.loc\\DFS_Shares\\Emp_Home\\E085678
-001700: [INFO ] userStatesWithErrorsPaged: found 1 affected user(s), limiting to test scope
-        </code></pre>
-      </div>
-    </section>
-
-    <section class="mt-10 space-y-6">
-      <h2 class="text-2xl font-semibold">notes or findings</h2>
-      <div class="bg-white shadow rounded-2xl p-5">
-        <pre class="bg-slate-100 text-slate-800 p-4 rounded-xl whitespace-pre-wrap">what I am seeing in the logs collected:
-- folders applied staff user policy and then checked \\cfisd.loc\\DFS_Shares\\emp_home\\<user>
-- code path failed in SmbFile.exists() with "the network name cannot be found"
-- those errors look like a dfs namespace or referral problem
-- from the same server, smbclient //cfisd.loc/DFS_Shares -U CFISD\\idauto previously worked, so creds or connectivity are generally ok
-
-extra:
-- if smbclient to the dfs root works but emp_home fails while stu_home works, that points to share or ntfs or abe on emp_home
-- manual smbclient failing is important because it is independent of the application
-        </pre>
       </div>
     </section>
 
     <footer class="mt-12 pb-12 text-sm text-slate-500">
-      <p>prepared for cfisd by identity automation support - updated Oct 3, 2025</p>
+      <p>prepared for cfisd by identity automation support – updated Oct 3, 2025</p>
     </footer>
   </div>
 
-  <script>
-    // storage keys
-    const STORE_KEY = "cfisd_dfs_checklist_v1";
-    const IDS_KEY = "cfisd_test_ids_v1";
-    const SETTINGS_KEY = "cfisd_cmd_settings_v1";
+  <!-- Firebase (compat builds = easiest in a static HTML file) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.1/firebase-firestore-compat.js"></script>
 
+  <script>
+    // --- Firebase config (from your console screenshots) ---
+    // If storageBucket differs in your project, update it accordingly.
+    const firebaseConfig = {
+      apiKey: "AlzaSyBK_f7xHtJS_Yqj6SWF6UGcPLGxX1SVrDw",
+      authDomain: "test-d4e6b.firebaseapp.com",
+      projectId: "test-d4e6b",
+      storageBucket: "test-d4e6b.appspot.com",
+      messagingSenderId: "172115547160",
+      appId: "1:172115547160:web:9d8190327c4277df0b5f6d"
+    };
+
+    // --- App init ---
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+    // Optional offline cache
+    db.enablePersistence({ synchronizeTabs: true }).catch(() => { /* ignore */ });
+
+    // List id via query param ?list=...
+    const listId = new URLSearchParams(location.search).get("list") || "cyfair";
+    document.getElementById("inp-list").value = listId;
+
+    // Firestore refs
+    const listDoc = db.collection("checklists").doc(listId);
+    const itemsCol = listDoc.collection("items");
+
+    // Default plan for tonight (your flow)
     const DEFAULT_ITEMS = [
-      { id: "policies-off", text: "Verify User Policies are OFF", checked: false },
-      { id: "pre-stu-list", text: "DFS control: cd STU_HOME and list one student", checked: false },
-      { id: "pre-emp-list", text: "DFS under test: cd EMP_HOME and list one employee", checked: false },
-      { id: "pre-emp-write", text: "Try mkdir and rmdir at EMP_HOME root", checked: false },
-      { id: "ms-acl", text: "Microsoft or NAS: confirm share and NTFS ACLs for CFISD\\idauto on EMP_HOME match STU_HOME", checked: false },
-      { id: "ms-referral", text: "Microsoft or NAS: confirm DFS referral points to real share name and returns FQDNs", checked: false },
-      { id: "ms-encryption", text: "Microsoft or NAS: check if SMB encryption or Kerberos is required on EMP_HOME", checked: false },
-      { id: "ms-abe", text: "Microsoft or NAS: check ABE is not hiding EMP_HOME from CFISD\\idauto", checked: false },
-      { id: "post-stu-list", text: "Re-test: STU_HOME list one student", checked: false },
-      { id: "post-emp-list", text: "Re-test: EMP_HOME list one employee", checked: false },
-      { id: "post-emp-write", text: "Re-test: mkdir and rmdir at EMP_HOME root", checked: false },
-      { id: "ri-wire", text: "Wire Folders back to DFS in policy and process one test user", checked: false },
-      { id: "notes-case", text: "Update case with outputs and attach logs", checked: false }
+      { text: "Verify User Policies are OFF", checked: false },
+      { text: "Precheck: smbclient DFS control → cd STU_HOME; list one student", checked: false },
+      { text: "Precheck: smbclient DFS under test → cd EMP_HOME; list one employee (expect fail)", checked: false },
+      { text: "Capture exact NT_STATUS lines in case notes", checked: false },
+      { text: "Microsoft/NAS fixes: DFS referral, share/NTFS ACLs, SMB policy", checked: false },
+      { text: "Re-test: EMP_HOME list one employee", checked: false },
+      { text: "Re-test: mkdir and rmdir at EMP_HOME root", checked: false },
+      { text: "If still blocked: turn on jCIFS DEBUG and run a single-user reproduce", checked: false },
+      { text: "After fixes: turn ON policy for 1 test user; process and verify logs", checked: false },
+      { text: "After hotfix from QA: update appliance", checked: false },
+      { text: "Enable all user policies", checked: false },
+      { text: "Update case with outputs and attach logs", checked: false }
     ];
 
+    // UI elements
     const elChecklist = document.getElementById("checklist");
     const elStu = document.getElementById("inp-stu");
     const elEmp = document.getElementById("inp-emp");
     const elEnc = document.getElementById("chk-enc");
     const elNew = document.getElementById("inp-new");
-
     const btnAdd = document.getElementById("btn-add");
     const btnReset = document.getElementById("btn-reset");
     const btnExport = document.getElementById("btn-export");
     const btnMarkAll = document.getElementById("btn-mark-all");
     const btnUnmarkAll = document.getElementById("btn-unmark-all");
 
-    function loadChecklist() {
-      const raw = localStorage.getItem(STORE_KEY);
-      return raw ? JSON.parse(raw) : DEFAULT_ITEMS.slice();
+    // Commands
+    function setCode(id, text) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = text;
     }
-    function saveChecklist(items) {
-      localStorage.setItem(STORE_KEY, JSON.stringify(items));
+    function updateCommands(stu, emp, enc) {
+      const encFlag = enc ? " -e" : "";
+      const preStu = `smbclient //cfisd.loc/DFS_Shares -U 'CFISD\\\\idauto' -m SMB3${encFlag} -c 'cd STU_HOME; allinfo ${stu}'`;
+      const preEmp = `smbclient //cfisd.loc/DFS_Shares -U 'CFISD\\\\idauto' -m SMB3${encFlag} -c 'cd EMP_HOME; allinfo ${emp}'`;
+      const writeEmp = `smbclient //cfisd.loc/DFS_Shares -U 'CFISD\\\\idauto' -m SMB3${encFlag} -c "cd EMP_HOME; mkdir __RI_DFS_TEST__; rmdir __RI_DFS_TEST__"`;
+      setCode("cmd-pre-stu", preStu);
+      setCode("cmd-pre-emp", preEmp);
+      setCode("cmd-write-emp", writeEmp);
     }
 
-    function loadIds() {
-      const raw = localStorage.getItem(IDS_KEY);
-      const def = { stu: "S249612", emp: "E085678" };
-      return raw ? { ...def, ...JSON.parse(raw) } : def;
+    // Create checklist doc if missing
+    async function ensureBaseDoc() {
+      const snap = await listDoc.get();
+      if (!snap.exists) {
+        await listDoc.set({
+          title: "CFISD – DFS/SMB troubleshooting",
+          stu: "S249612",
+          emp: "E085678",
+          enc: false,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        // Seed default items
+        const batch = db.batch();
+        DEFAULT_ITEMS.forEach((it, i) => {
+          const ref = itemsCol.doc();
+          batch.set(ref, {
+            text: it.text,
+            checked: !!it.checked,
+            order: i,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        });
+        await batch.commit();
+      }
     }
-    function saveIds(v) { localStorage.setItem(IDS_KEY, JSON.stringify(v)); }
 
-    function loadSettings() {
-      const raw = localStorage.getItem(SETTINGS_KEY);
-      const def = { enc: false };
-      return raw ? { ...def, ...JSON.parse(raw) } : def;
-    }
-    function saveSettings(v) { localStorage.setItem(SETTINGS_KEY, JSON.stringify(v)); }
-
-    function renderChecklist() {
-      const items = loadChecklist();
+    // Render items
+    let itemsCache = []; // for export/mark-all
+    function renderItems(docs) {
+      itemsCache = docs;
       elChecklist.innerHTML = "";
-      for (const item of items) {
+      docs.forEach(doc => {
+        const data = doc.data();
         const li = document.createElement("li");
         li.className = "flex items-center gap-3 p-2 rounded-lg border border-slate-200";
         const cb = document.createElement("input");
         cb.type = "checkbox";
         cb.className = "size-4";
-        cb.checked = !!item.checked;
+        cb.checked = !!data.checked;
         cb.addEventListener("change", () => {
-          const updated = loadChecklist().map(it => it.id === item.id ? { ...it, checked: cb.checked } : it);
-          saveChecklist(updated);
+          doc.ref.update({
+            checked: cb.checked,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
         });
         const label = document.createElement("label");
-        label.textContent = item.text;
+        label.textContent = data.text;
         label.className = "flex-1 text-sm";
         const del = document.createElement("button");
         del.textContent = "Remove";
         del.className = "text-xs px-2 py-1 rounded bg-slate-100 hover:bg-slate-200";
-        del.addEventListener("click", () => {
-          const updated = loadChecklist().filter(it => it.id !== item.id);
-          saveChecklist(updated);
-          renderChecklist();
-        });
+        del.addEventListener("click", () => doc.ref.delete());
         li.append(cb, label, del);
         elChecklist.appendChild(li);
-      }
+      });
     }
 
-    btnAdd.addEventListener("click", () => {
+    // Event handlers
+    btnAdd.addEventListener("click", async () => {
       const text = (elNew.value || "").trim();
       if (!text) return toast("Enter an item");
-      const items = loadChecklist();
-      items.push({ id: `custom_${Date.now()}`, text, checked: false });
-      saveChecklist(items);
+      await itemsCol.add({
+        text, checked: false, order: Date.now(),
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
       elNew.value = "";
-      renderChecklist();
     });
 
-    btnReset.addEventListener("click", () => {
+    btnReset.addEventListener("click", async () => {
       if (!confirm("Restore default checklist items?")) return;
-      saveChecklist(DEFAULT_ITEMS.slice());
-      renderChecklist();
+      const snapshot = await itemsCol.get();
+      const batch = db.batch();
+      snapshot.forEach(d => batch.delete(d.ref));
+      DEFAULT_ITEMS.forEach((it, i) => {
+        const ref = itemsCol.doc();
+        batch.set(ref, {
+          text: it.text,
+          checked: !!it.checked,
+          order: i,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+      await batch.commit();
+      toast("Defaults restored");
     });
 
     btnExport.addEventListener("click", async () => {
-      const items = loadChecklist();
-      const lines = items.map(it => `${it.checked ? "[x]" : "[ ]"} ${it.text}`);
+      const lines = itemsCache.map(d => `${d.data().checked ? "[x]" : "[ ]"} ${d.data().text}`);
       await navigator.clipboard.writeText(lines.join("\n"));
       toast("Exported to clipboard");
     });
 
-    btnMarkAll.addEventListener("click", () => {
-      const items = loadChecklist().map(it => ({ ...it, checked: true }));
-      saveChecklist(items); renderChecklist();
-    });
-    btnUnmarkAll.addEventListener("click", () => {
-      const items = loadChecklist().map(it => ({ ...it, checked: false }));
-      saveChecklist(items); renderChecklist();
+    btnMarkAll.addEventListener("click", async () => {
+      const batch = db.batch();
+      itemsCache.forEach(d => batch.update(d.ref, { checked: true, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }));
+      await batch.commit();
     });
 
-    function updateCommands() {
-      const ids = loadIds();
-      const sets = loadSettings();
-      const enc = sets.enc ? " -e" : "";
-      const preStu = `smbclient //cfisd.loc/DFS_Shares -U 'CFISD\\\\idauto' -m SMB3${enc} -c 'cd STU_HOME; allinfo ${ids.stu}'`;
-      const preEmp = `smbclient //cfisd.loc/DFS_Shares -U 'CFISD\\\\idauto' -m SMB3${enc} -c 'cd EMP_HOME; allinfo ${ids.emp}'`;
-      const writeEmp = `smbclient //cfisd.loc/DFS_Shares -U 'CFISD\\\\idauto' -m SMB3${enc} -c 'cd EMP_HOME; mkdir __RI_DFS_TEST__; rmdir __RI_DFS_TEST__'`;
-      setCode('cmd-pre-stu', preStu);
-      setCode('cmd-pre-emp', preEmp);
-      setCode('cmd-write-emp', writeEmp);
+    btnUnmarkAll.addEventListener("click", async () => {
+      const batch = db.batch();
+      itemsCache.forEach(d => batch.update(d.ref, { checked: false, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }));
+      await batch.commit();
+    });
+
+    elStu.addEventListener("input", () => listDoc.set({ stu: elStu.value || "S249612", updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true }));
+    elEmp.addEventListener("input", () => listDoc.set({ emp: elEmp.value || "E085678", updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true }));
+    elEnc.addEventListener("change", () => listDoc.set({ enc: !!elEnc.checked, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true }));
+
+    async function init() {
+      await ensureBaseDoc();
+
+      listDoc.onSnapshot(snap => {
+        const data = snap.data() || {};
+        elStu.value = data.stu || "S249612";
+        elEmp.value = data.emp || "E085678";
+        elEnc.checked = !!data.enc;
+        updateCommands(elStu.value, elEmp.value, elEnc.checked);
+      });
+
+      itemsCol.orderBy("order", "asc").onSnapshot(snap => renderItems(snap.docs));
     }
 
-    function setCode(id, text) {
-      const el = document.getElementById(id);
-      if (el) el.textContent = text;
-    }
-
-    // copy helper
-    async function copyFrom(id) {
-      try {
-        const el = document.getElementById(id);
-        const text = el ? el.innerText : "";
-        await navigator.clipboard.writeText(text);
-        toast("Copied to clipboard");
-      } catch (e) {
-        console.error(e);
-        toast("Copy failed");
-      }
-    }
-
+    // tiny toast
     function toast(msg) {
       const t = document.createElement("div");
       t.textContent = msg;
@@ -403,22 +315,16 @@ extra:
       setTimeout(() => t.remove(), 1600);
     }
 
-    // init
-    (function init() {
-      // ids
-      const ids = loadIds();
-      elStu.value = ids.stu; elEmp.value = ids.emp;
-      elStu.addEventListener('input', () => { saveIds({ stu: elStu.value.trim() || 'S249612', emp: elEmp.value.trim() || 'E085678' }); updateCommands(); });
-      elEmp.addEventListener('input', () => { saveIds({ stu: elStu.value.trim() || 'S249612', emp: elEmp.value.trim() || 'E085678' }); updateCommands(); });
-      // settings
-      const sets = loadSettings();
-      elEnc.checked = !!sets.enc;
-      elEnc.addEventListener('change', () => { saveSettings({ enc: elEnc.checked }); updateCommands(); });
-      // list
-      renderChecklist();
-      // commands
-      updateCommands();
-    })();
+    // copy helper
+    async function copyFrom(id) {
+      const el = document.getElementById(id);
+      const text = el ? el.innerText : "";
+      try { await navigator.clipboard.writeText(text); toast("Copied"); }
+      catch { toast("Copy failed"); }
+    }
+
+    // go
+    init();
   </script>
 </body>
 </html>
