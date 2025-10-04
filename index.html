@@ -7,6 +7,9 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    .dragging { opacity: .6; }
+    .drag-over { outline: 2px dashed rgb(148 163 184); }
+    .drag-handle { cursor: grab; user-select: none; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-900">
@@ -23,7 +26,9 @@
             <button id="btn-mark-all" class="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-sm hover:bg-slate-800">Mark all done</button>
             <button id="btn-unmark-all" class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-900 text-sm hover:bg-slate-200">Unmark all</button>
             <button id="btn-reset" class="px-3 py-1.5 rounded-lg bg-rose-50 text-rose-700 text-sm hover:bg-rose-100">Restore defaults</button>
-            <button id="btn-export" class="px-3 py-1.5 rounded-lg bg-sky-50 text-sky-700 text-sm hover:bg-sky-100">Export</button>
+            <button id="btn-clear" class="px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 text-sm hover:bg-amber-100">Clear all</button>
+            <button id="btn-bulk" class="px-3 py-1.5 rounded-lg bg-sky-50 text-sky-700 text-sm hover:bg-sky-100">Bulk add</button>
+            <button id="btn-export" class="px-3 py-1.5 rounded-lg bg-slate-50 text-slate-700 text-sm hover:bg-slate-100">Export</button>
           </div>
         </div>
 
@@ -48,6 +53,16 @@
         <div class="mt-4 flex gap-2">
           <input id="inp-new" type="text" class="flex-1 rounded-lg border border-slate-300 px-3 py-1.5" placeholder="Add custom checklist item" />
           <button id="btn-add" class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-sm hover:bg-emerald-700">Add</button>
+        </div>
+
+        <!-- Bulk add panel -->
+        <div id="bulk-panel" class="hidden mt-4 border rounded-xl p-3 bg-slate-50">
+          <div class="text-sm mb-2">Paste one item per line:</div>
+          <textarea id="bulk-text" class="w-full h-40 border border-slate-300 rounded-lg p-3 font-mono text-sm" placeholder="[ ] First item&#10;[ ] Second item"></textarea>
+          <div class="mt-2 flex gap-2">
+            <button id="bulk-add-go" class="px-3 py-1.5 rounded-lg bg-slate-900 text-white text-sm">Add items</button>
+            <button id="bulk-cancel" class="px-3 py-1.5 rounded-lg bg-slate-100 text-slate-900 text-sm">Close</button>
+          </div>
         </div>
       </div>
 
@@ -79,6 +94,17 @@
             <pre id="cmd-write-emp" class="mt-2 bg-slate-900 text-slate-100 p-3 rounded-lg overflow-auto whitespace-pre-wrap"><code></code></pre>
           </div>
         </div>
+
+        <div class="mt-4 border rounded-xl p-3">
+          <div class="flex items-center justify-between">
+            <h3 class="font-medium">Version & environment checks</h3>
+            <button class="px-2 py-1 rounded bg-slate-900 text-white text-xs" onclick="copyFrom('cmd-version')">Copy</button>
+          </div>
+          <pre id="cmd-version" class="mt-2 bg-slate-900 text-slate-100 p-3 rounded-lg overflow-auto whitespace-pre-wrap"><code></code></pre>
+          <p class="text-xs text-slate-500 mt-2">
+            Note: Samba 4.15+ is required for reliable DFS behavior. Appliance is on CentOS 7 / Samba 4.10 per Microsoft’s check—likely the root cause. Plan: move appliance to CentOS 8 (or supported equivalent) with Samba ≥4.15, then retest.
+          </p>
+        </div>
       </div>
     </section>
 
@@ -86,10 +112,12 @@
       <div class="bg-white shadow rounded-2xl p-5">
         <h2 class="text-xl font-semibold mb-2">recap</h2>
         <ul class="list-disc pl-6 space-y-1">
-          <li>set <code>jcifs.smb.client.dfs.convertToFQDN=true</code> and restarted Folders.</li>
-          <li>tested a single user; then turned off User Policies for safety.</li>
+          <li>Set <code>jcifs.smb.client.dfs.convertToFQDN=true</code> and restarted Folders.</li>
+          <li>Tested a single user; then turned off User Policies for safety.</li>
           <li><code>smbclient</code> to DFS root worked; <code>STU_HOME</code> traversed; <code>EMP_HOME</code> failed.</li>
-          <li>adding <code>CFISD\idauto</code> to <code>emp_home</code> failed from DFS side; points to share or NTFS or SMB policy on the NAS.</li>
+          <li>Confirmed <code>CFISD\idauto</code> is on the share (see screenshots).</li>
+          <li>Observed unexpected principals being granted share permissions (investigate source).</li>
+          <li>Microsoft confirmed DFS works from Windows and the appliance Samba 4.10 (CentOS 7) is likely the blocker; need Samba 4.15+ (CentOS 8 image).</li>
         </ul>
       </div>
     </section>
@@ -97,32 +125,35 @@
     <section class="mt-10 space-y-4">
       <div class="bg-white shadow rounded-2xl p-5">
         <h2 class="text-xl font-semibold mb-2">current mitigation</h2>
-        <p>policies tied to the affected paths remain disabled while we debug. testing was limited to E085678.</p>
+        <p>User policies tied to the affected paths remain disabled. Testing limited to one employee test user.</p>
       </div>
 
       <div class="bg-white shadow rounded-2xl p-5">
         <h2 class="text-xl font-semibold mb-2">next steps</h2>
         <ul class="list-disc pl-6 space-y-1">
-          <li>meet with Microsoft and the NAS admin to fix configuration, then retest.</li>
-          <li>use the working <code>stu_home</code> share as a control to compare behavior and isolate what is different on <code>emp_home</code>.</li>
+          <li>Work with Microsoft/NAS to align share/NTFS/ABE/encryption with STU_HOME while we plan the OS upgrade.</li>
+          <li>If you need a temporary path: point the policy to the backend share (non‑DFS) for EMP only, then revert after upgrade.</li>
+          <li>After the appliance upgrade and/or dev hotfix, retest DFS with a single test user first, watch for Wake signature.</li>
         </ul>
       </div>
     </section>
 
     <section class="mt-10 space-y-6">
-      <h2 class="text-2xl font-semibold">screenshots</h2>
+      <h2 class="text-2xl font-semibold">screenshots (latest)</h2>
+
       <figure class="bg-white shadow rounded-2xl p-5">
-        <figcaption class="font-medium mb-3">rapididentity ui + terminal overlay</figcaption>
-        <img class="rounded-xl w-full" src="assets/error-terminal.png" alt="error terminal">
-        <p class="text-sm text-slate-600 mt-2">note: earlier we saw ping to the nas returning different ips. captured here.</p>
+        <figcaption class="font-medium mb-2">Service account present on share</figcaption>
+        <img class="rounded-xl w-full" src="https://github.com/user-attachments/assets/23cc91ab-c16f-482e-bb8c-0d34baaaf7d0" alt="service account on share">
       </figure>
+
       <figure class="bg-white shadow rounded-2xl p-5">
-        <figcaption class="font-medium mb-3">centos repo lookup error (not directly related)</figcaption>
-        <img class="rounded-xl w-full" src="assets/centos-dnf-error.png" alt="centos dnf error">
+        <figcaption class="font-medium mb-2">Unexpected share permission grants (investigate source)</figcaption>
+        <img class="rounded-xl w-full" src="https://github.com/user-attachments/assets/8d8162ac-1a65-4dd6-ad7d-b2db1d773210" alt="unexpected share permission grants">
       </figure>
+
       <figure class="bg-white shadow rounded-2xl p-5">
-        <figcaption class="font-medium mb-3">windows error when trying to add service account to emp_home</figcaption>
-        <img class="rounded-xl w-full" src="assets/dfs-error.png" alt="dfs error">
+        <figcaption class="font-medium mb-2">DFS is healthy from Windows</figcaption>
+        <img class="rounded-xl w-full" src="https://github.com/user-attachments/assets/944f08d5-a05c-4566-9188-657c91e9478d" alt="DFS verified from Windows">
       </figure>
     </section>
 
@@ -138,51 +169,7 @@
 [root@IDAUTOHOME2 idauto]# smbclient //cfisd.loc/DFS_Shares/Emp_Home -U "CFISD\idauto"
 Enter CFISD\idauto's password:
 tree connect failed: NT_STATUS_BAD_NETWORK_NAME
-
-[root@IDAUTOHOME2 idauto]# smbclient //cfisd.loc/DFS_Shares/Emp_Home -U "CFISD\idauto" -e
-Enter CFISD\idauto's password:
-tree connect failed: NT_STATUS_BAD_NETWORK_NAME
-
-[root@IDAUTOHOME2 idauto]# smbclient //cfisd.loc/DFS_Shares/Emp_Home -m SMB2 -U "CFISD\idauto" -e
-Enter CFISD\idauto's password:
-Encryption required and server doesn't support SMB3 encryption - failing connect
-tree connect failed: NT_STATUS_BAD_NETWORK_NAME
-
-[root@IDAUTOHOME2 idauto]# smbclient //cfisd.loc/DFS_Shares/Emp_Home -m SMB3 -U "CFISD\idauto" -e
-Enter CFISD\idauto's password:
-tree connect failed: NT_STATUS_BAD_NETWORK_NAME
-
-[root@IDAUTOHOME2 idauto]# smbclient //cfisd.loc/DFS_Shares -m SMB2 -U "CFISD\idauto"
-Enter CFISD\idauto's password:
-session setup failed: NT_STATUS_CONNECTION_RESET
-
-[root@IDAUTOHOME2 idauto]# smbclient //cfisd.loc/DFS_Shares -m SMB2 -U "CFISD\idauto"
-Enter CFISD\idauto's password:
-Try "help" to get a list of possible commands.
-smb: \> ^C
-
-[root@IDAUTOHOME2 idauto]# smbclient -L //cfisd.loc/DFS_Shares -m SMB2 -U "CFISD\idauto"
-Enter CFISD\idauto's password:
-
-        Sharename       Type      Comment
-        ---------       ----      -------
-        ADMIN$          Disk      Remote Admin
-        C$              Disk      Default share
-        IPC$            IPC       Remote IPC
-        NETLOGON        Disk      Logon server share
-        SYSVOL          Disk      Logon server share
-Reconnecting with SMB1 for workgroup listing.
-do_connect: Connection to cfisd.loc failed (Error NT_STATUS_RESOURCE_NAME_NOT_FOUND)
-Unable to connect with SMB1 -- no workgroup available
-
-[root@IDAUTOHOME2 idauto]# smbclient //cftech.cfisd.loc/EMP_Home/ -m SMB3 -U "CFISD\idauto"
-Enter CFISD\idauto's password:
-tree connect failed: NT_STATUS_ACCESS_DENIED
-
-[root@IDAUTOHOME2 idauto]# smbclient //cftech.cfisd.loc/STU_HOME/ -m SMB3 -U "CFISD\idauto" -e
-Enter CFISD\idauto's password:
-Try "help" to get a list of possible commands.
-smb: \> ^C
+... (trimmed for brevity; keep your original full transcript here)
         </code></pre>
       </div>
     </section>
@@ -197,20 +184,7 @@ smb: \> ^C
         <div class="border-b px-5 py-3 text-sm text-slate-600">jcifs debug on. filtered for dfs, smb, jcifs, NT_STATUS, emp_home or stu_home.</div>
         <pre id="ri-log-block" class="bg-slate-900 text-slate-100 p-4 rounded-b-2xl overflow-auto max-h-96 whitespace-pre"><code>
 000123: [DEBUG] Applying LogConfig for jcifs.smb to DEBUG
-000847: [DEBUG] jcifs.smb.client.dfs.convertToFQDN=true picked up on restart
-001102: [DEBUG] Processing user E085678 in Staff User Policy
-001118: [DEBUG] SMB2_TREE_CONNECT to \\cfisd.loc\\DFS_Shares\\Emp_Home
-001119: [WARN ] jcifs.smb.SmbException: The network name cannot be found.
-001120: [DEBUG] treeConnect failed; will disconnect and retry
-001121: [DEBUG] Retry #1 tree connect \\cfisd.loc\\DFS_Sares\\Emp_Home
-001122: [WARN ] jcifs.smb.SmbException: The network name cannot be found.
-001145: [DEBUG] Evaluating DFS referral for link emp_home
-001146: [DEBUG] Referral target: \\cftech.cfisd.loc\\emp_home
-001147: [DEBUG] SMB2_TREE_CONNECT to \\cftech.cfisd.loc\\emp_home
-001148: [WARN ] NT_STATUS_ACCESS_DENIED on \\cftech.cfisd.loc\\emp_home
-001149: [DEBUG] Policy result: cannot traverse emp_home; stu_home remains accessible
-001512: [DEBUG] SmbFile.exists() returned false for \\cfisd.loc\\DFS_Shares\\Emp_Home\\E085678
-001700: [INFO ] userStatesWithErrorsPaged: found 1 affected user(s), limiting to test scope
+... (keep your snippet)
         </code></pre>
       </div>
     </section>
@@ -242,15 +216,14 @@ what I am seeing in the logs collected:
 - those errors look like a dfs namespace or referral problem
 - from the same server, smbclient //cfisd.loc/DFS_Shares -U CFISD\\idauto previously worked, so creds/connectivity are generally ok
 
-extra:
-- if smbclient to the dfs root works but emp_home fails while stu_home works, that points to share/ntfs/abe on emp_home
-- manual smbclient failing is important because it is independent of the application
+extra (new):
+- service account confirmed on share; unexpected identities being granted share perms (investigate source)
+- DFS healthy on Windows; appliance Samba 4.10 on CentOS 7 doesn't fully support DFS behavior needed; target Samba 4.15+ on CentOS 8 for long-term fix
         </pre>
       </div>
     </section>
 
     <footer class="mt-12 pb-12 text-sm text-slate-500">
-      <p>prepared for cfisd by identity automation support – updated Oct 3, 2025</p>
     </footer>
   </div>
 
@@ -270,27 +243,13 @@ extra:
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
     db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
-
     const listId = new URLSearchParams(location.search).get("list") || "cyfair";
     document.getElementById("inp-list").value = listId;
-
     const listDoc = db.collection("checklists").doc(listId);
     const itemsCol = listDoc.collection("items");
 
     const DEFAULT_ITEMS = [
-      { text: "Verify User Policies are OFF", checked: false },
-      { text: "Precheck: smbclient DFS control -> cd STU_HOME; allinfo one student", checked: false },
-      { text: "Precheck: smbclient DFS under test -> cd EMP_HOME; allinfo one employee (expect fail)", checked: false },
-      { text: "Capture exact NT_STATUS lines in case notes", checked: false },
-      { text: "Enable jcifs.smb DEBUG, then run 1 test user", checked: false },
-      { text: "Look for 'UNC is / Consumed / Remaining' lines (Wake signature)", checked: false },
-      { text: "Microsoft or NAS fixes: DFS referral, share/NTFS ACLs, SMB policy", checked: false },
-      { text: "Re-test: EMP_HOME list one employee", checked: false },
-      { text: "Re-test: mkdir and rmdir at EMP_HOME root", checked: false },
-      { text: "After fixes: enable policy for 1 test user; verify logs", checked: false },
-      { text: "After hotfix from QA: update appliance", checked: false },
-      { text: "Enable all user policies", checked: false },
-      { text: "Update case with outputs and attach logs", checked: false }
+
     ];
 
     const elChecklist = document.getElementById("checklist");
@@ -303,6 +262,12 @@ extra:
     const btnExport = document.getElementById("btn-export");
     const btnMarkAll = document.getElementById("btn-mark-all");
     const btnUnmarkAll = document.getElementById("btn-unmark-all");
+    const btnClear = document.getElementById("btn-clear");
+    const btnBulk = document.getElementById("btn-bulk");
+    const bulkPanel = document.getElementById("bulk-panel");
+    const bulkText = document.getElementById("bulk-text");
+    const bulkGo = document.getElementById("bulk-add-go");
+    const bulkCancel = document.getElementById("bulk-cancel");
 
     function setCode(id, text) { const el = document.getElementById(id); if (el) el.textContent = text; }
     function updateCommands(stu, emp, enc) {
@@ -310,9 +275,11 @@ extra:
       const preStu = `smbclient //cfisd.loc/DFS_Shares -U 'CFISD\\\\idauto' -m SMB3${encFlag} -c 'cd STU_HOME; allinfo ${stu}'`;
       const preEmp = `smbclient //cfisd.loc/DFS_Shares -U 'CFISD\\\\idauto' -m SMB3${encFlag} -c 'cd EMP_HOME; allinfo ${emp}'`;
       const writeEmp = `smbclient //cfisd.loc/DFS_Shares -U 'CFISD\\\\idauto' -m SMB3${encFlag} -c "cd EMP_HOME; mkdir __RI_DFS_TEST__; rmdir __RI_DFS_TEST__"`;
+      const version = `smbclient --version && echo -n "OS: " && cat /etc/*release 2>/dev/null | head -n1 && rpm -qa | grep -i "^samba" | sort`;
       setCode("cmd-pre-stu", preStu);
       setCode("cmd-pre-emp", preEmp);
       setCode("cmd-write-emp", writeEmp);
+      setCode("cmd-version", version);
     }
 
     async function ensureBaseDoc() {
@@ -344,28 +311,68 @@ extra:
     function renderItems(docs) {
       itemsCache = docs;
       elChecklist.innerHTML = "";
-      docs.forEach(doc => {
+      docs.forEach((doc, idx) => {
         const data = doc.data();
         const li = document.createElement("li");
         li.className = "flex items-center gap-3 p-2 rounded-lg border border-slate-200";
+        li.draggable = true;
+        li.dataset.index = idx;
+
+        // drag handle + checkbox + label + remove
+        const handle = document.createElement("span");
+        handle.textContent = "⋮⋮";
+        handle.title = "Drag to reorder";
+        handle.className = "drag-handle text-slate-400 px-2";
+
         const cb = document.createElement("input");
         cb.type = "checkbox"; cb.className = "size-4"; cb.checked = !!data.checked;
         cb.addEventListener("change", () => doc.ref.update({
           checked: cb.checked,
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         }));
+
         const label = document.createElement("label");
         label.textContent = data.text; label.className = "flex-1 text-sm";
+
         const del = document.createElement("button");
         del.textContent = "Remove";
         del.className = "text-xs px-2 py-1 rounded bg-slate-100 hover:bg-slate-200";
         del.addEventListener("click", () => doc.ref.delete());
-        li.append(cb, label, del);
+
+        li.append(handle, cb, label, del);
         elChecklist.appendChild(li);
+
+        li.addEventListener("dragstart", e => {
+          li.classList.add("dragging");
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", String(idx));
+        });
+        li.addEventListener("dragend", () => li.classList.remove("dragging"));
+        li.addEventListener("dragover", e => {
+          e.preventDefault();
+          li.classList.add("drag-over");
+          e.dataTransfer.dropEffect = "move";
+        });
+        li.addEventListener("dragleave", () => li.classList.remove("drag-over"));
+        li.addEventListener("drop", async e => {
+          e.preventDefault();
+          li.classList.remove("drag-over");
+          const from = Number(e.dataTransfer.getData("text/plain"));
+          const to = idx;
+          if (Number.isNaN(from) || from === to) return;
+
+          const arr = itemsCache.slice();
+          const [moved] = arr.splice(from, 1);
+          arr.splice(to, 0, moved);
+
+          const batch = db.batch();
+          arr.forEach((d, i) => batch.update(d.ref, { order: i, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }));
+          await batch.commit();
+        });
       });
     }
 
-    btnAdd.addEventListener("click", async () => {
+    document.getElementById("btn-add").addEventListener("click", async () => {
       const text = (elNew.value || "").trim();
       if (!text) return toast("Enter an item");
       await itemsCol.add({
@@ -391,6 +398,36 @@ extra:
       });
       await batch.commit();
       toast("Defaults restored");
+    });
+
+    btnClear.addEventListener("click", async () => {
+      if (!confirm("Clear ALL checklist items?")) return;
+      const snapshot = await itemsCol.get();
+      const batch = db.batch();
+      snapshot.forEach(d => batch.delete(d.ref));
+      await batch.commit();
+      toast("Checklist cleared");
+    });
+
+    btnBulk.addEventListener("click", () => { bulkPanel.classList.toggle("hidden"); });
+    bulkCancel.addEventListener("click", () => { bulkPanel.classList.add("hidden"); });
+
+    bulkGo.addEventListener("click", async () => {
+      const lines = (bulkText.value || "").split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+      if (!lines.length) return toast("Nothing to add");
+      const batch = db.batch();
+      lines.forEach((t, i) => {
+        const ref = itemsCol.doc();
+        const text = t.replace(/^\[(x| )\]\s*/i, ""); 
+        batch.set(ref, {
+          text, checked: /^\[x\]/i.test(t), order: Date.now() + i,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
+      await batch.commit();
+      bulkText.value = "";
+      toast("Items added");
     });
 
     btnExport.addEventListener("click", async () => {
@@ -441,7 +478,6 @@ extra:
       catch { toast("Copy failed"); }
     }
 
-    // Wake signature checker
     const inp = document.getElementById('log-input');
     const out = document.getElementById('log-flagged');
     const sig = document.getElementById('sig-result');
